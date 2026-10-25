@@ -1,0 +1,44 @@
+services:
+  db:
+    build: ./db
+    environment:
+      POSTGRES_DB: ${DB_NAME:-notes}
+      POSTGRES_USER: ${DB_USER:-notes}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-notes}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      args:
+        APP_VERSION: ${APP_VERSION:-dev}
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-notes}
+      DB_USER: ${DB_USER:-notes}
+      DB_PASSWORD: ${DB_PASSWORD:-notes}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    environment:
+      BACKEND_URL: http://backend:8000
+    ports:
+      - "${FRONTEND_PORT:-8080}:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  db-data:
