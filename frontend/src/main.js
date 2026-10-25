@@ -4,6 +4,8 @@ const API = "/api";
 
 const $ = (id) => document.getElementById(id);
 
+let lastIds = new Set();
+
 function showError(msg) {
   $("error").textContent = msg;
   $("error").hidden = !msg;
@@ -18,29 +20,49 @@ async function request(path, options = {}) {
   return res.status === 204 ? null : res.json();
 }
 
+function formatTs(iso) {
+  const d = new Date(iso);
+  const pad = (n) => String(n).padStart(2, "0");
+  return `[${pad(d.getDate())}.${pad(d.getMonth() + 1)} ${pad(d.getHours())}:${pad(d.getMinutes())}]`;
+}
+
 function renderNotes(notes) {
   const list = $("notes");
   list.innerHTML = "";
-  for (const n of notes) {
+
+  const ordered = [...notes].reverse();
+  for (const n of ordered) {
     const li = document.createElement("li");
+    if (lastIds.size && !lastIds.has(n.id)) li.classList.add("fresh");
 
-    const text = document.createElement("span");
-    text.className = "text";
-    text.textContent = n.text;
+    const ts = document.createElement("span");
+    ts.className = "ts";
+    ts.textContent = formatTs(n.created_at);
 
-    const date = document.createElement("span");
-    date.className = "date";
-    date.textContent = new Date(n.created_at).toLocaleString("ru-RU");
+    const id = document.createElement("span");
+    id.className = "id";
+    id.textContent = `#${n.id}`;
 
-    const del = document.createElement("button");
-    del.title = "Удалить";
-    del.textContent = "✕";
-    del.onclick = () => removeNote(n.id);
+    const msg = document.createElement("span");
+    msg.className = "msg";
+    msg.textContent = n.text;
 
-    li.append(text, date, del);
+    const rm = document.createElement("button");
+    rm.className = "rm";
+    rm.title = "удалить";
+    rm.textContent = "rm";
+    rm.onclick = () => removeNote(n.id);
+
+    li.append(ts, id, msg, rm);
     list.append(li);
   }
+
+  lastIds = new Set(notes.map((n) => n.id));
   $("empty").hidden = notes.length > 0;
+  $("count").textContent = `${notes.length} ${notes.length === 1 ? "entry" : "entries"}`;
+
+  const body = document.querySelector(".term-body");
+  body.scrollTop = body.scrollHeight;
 }
 
 async function loadNotes() {
@@ -48,7 +70,7 @@ async function loadNotes() {
     renderNotes(await request("/notes"));
     showError("");
   } catch (e) {
-    showError("Не удалось загрузить заметки: " + e.message);
+    showError(`не удалось загрузить журнал (${e.message})`);
   }
 }
 
@@ -57,7 +79,7 @@ async function removeNote(id) {
     await request(`/notes/${id}`, { method: "DELETE" });
     await loadNotes();
   } catch (e) {
-    showError("Не удалось удалить: " + e.message);
+    showError(`rm #${id}: ${e.message}`);
   }
 }
 
@@ -71,32 +93,47 @@ $("note-form").addEventListener("submit", async (ev) => {
     input.value = "";
     await loadNotes();
   } catch (e) {
-    showError("Не удалось сохранить: " + e.message);
+    showError(`add: ${e.message}`);
+  }
+});
+
+document.querySelector(".term").addEventListener("click", (ev) => {
+  if (!window.getSelection().toString() && ev.target.tagName !== "BUTTON") {
+    $("note-text").focus();
   }
 });
 
 async function loadInfo() {
   try {
     const info = await request("/info");
-    $("info").textContent = `backend v${info.version} @ ${info.hostname}`;
+    $("sb-version").textContent = `v${info.version}`;
+    $("sb-host").textContent = `host: ${info.hostname}`;
+    $("prompt-host").textContent = info.hostname;
   } catch {
-    $("info").textContent = "backend: недоступен";
+    $("sb-version").textContent = "v?";
+    $("sb-host").textContent = "host: offline";
   }
 }
 
 async function loadStatus() {
-  const badge = $("status");
+  const el = $("status");
   try {
     await request("/ready");
-    badge.textContent = "DB: ok";
-    badge.className = "badge ok";
+    el.textContent = "db: up";
+    el.className = "sb-seg sb-db ok";
   } catch {
-    badge.textContent = "DB: недоступна";
-    badge.className = "badge bad";
+    el.textContent = "db: down";
+    el.className = "sb-seg sb-db bad";
   }
+}
+
+function tick() {
+  $("clock").textContent = new Date().toLocaleTimeString("ru-RU");
 }
 
 loadNotes();
 loadInfo();
 loadStatus();
+tick();
+setInterval(tick, 1000);
 setInterval(() => { loadInfo(); loadStatus(); }, 5000);

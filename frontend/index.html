@@ -3,26 +3,40 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Notes</title>
+  <title>notes</title>
 </head>
 <body>
-  <main>
-    <header>
-      <h1>Notes</h1>
-      <span id="status" class="badge">…</span>
-    </header>
+  <div class="term">
+    <div class="term-head">
+      <span class="term-title">notes — journal</span>
+      <span class="term-count" id="count">0 entries</span>
+    </div>
 
-    <form id="note-form">
-      <input id="note-text" type="text" placeholder="Новая заметка" maxlength="500" required autocomplete="off">
-      <button type="submit">Добавить</button>
-    </form>
+    <div class="term-body">
+      <pre class="motd">  _  _  ___ _____ ___ ___
+ | \| |/ _ \_   _| __/ __|
+ | .` | (_) || | | _|\__ \
+ |_|\_|\___/ |_| |___|___/</pre>
 
-    <p id="error" class="error" hidden></p>
-    <ul id="notes"></ul>
-    <p id="empty" class="muted" hidden>Пока нет заметок</p>
+      <ul id="notes" class="log"></ul>
+      <p id="empty" class="dim" hidden>-- журнал пуст --</p>
+      <p id="error" class="err" hidden></p>
 
-    <footer id="info" class="muted">backend: …</footer>
-  </main>
+      <form id="note-form" class="prompt">
+        <label for="note-text"><span class="p-user">guest</span>@<span class="p-host" id="prompt-host">notes</span>:<span class="p-path">~</span>$ add</label>
+        <input id="note-text" type="text" maxlength="500" required autocomplete="off" spellcheck="false" autofocus>
+      </form>
+    </div>
+
+    <div class="statusbar">
+      <span class="sb-seg sb-name">[notes]</span>
+      <span class="sb-seg" id="sb-version">v?</span>
+      <span class="sb-seg" id="sb-host">host: ?</span>
+      <span class="sb-fill"></span>
+      <span class="sb-seg sb-db" id="status">db: ?</span>
+      <span class="sb-seg" id="clock">--:--:--</span>
+    </div>
+  </div>
   <script type="module" src="/src/main.js"></script>
 </body>
 </html>
