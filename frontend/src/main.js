@@ -1,3 +1,5 @@
+import "./style.css";
+
 const API = "/api";
 
 const $ = (id) => document.getElementById(id);

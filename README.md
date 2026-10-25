@@ -1,12 +1,21 @@
 # Notes
 
-Простое приложение для заметок: frontend (nginx + JS), backend (FastAPI), PostgreSQL.
+Простое приложение для заметок: frontend (Vite + nginx), backend (FastAPI), PostgreSQL.
 
 ```
 browser ──► frontend :80 (nginx)
-              ├── /        → index.html, app.js
+              ├── /        → статика из dist
               └── /api/*   → backend :8000 (FastAPI) ──► db :5432 (PostgreSQL)
 ```
+
+## Сети
+
+| Сеть      | Сервисы             |
+|-----------|---------------------|
+| `app-net` | frontend, backend   |
+| `db-net`  | backend, db         |
+
+Frontend и backend находятся в одной сети и обращаются друг к другу по имени сервиса (`http://backend:8000`). БД доступна только бэкенду. Наружу опубликован только порт фронтенда.
 
 ## Запуск
 
@@ -18,6 +27,48 @@ docker compose up --build -d
 Приложение: http://localhost:8080
 
 Остановка: `docker compose down`, с удалением данных: `docker compose down -v`.
+
+## Запуск без compose
+
+```bash
+docker network create notes-net
+
+docker build -t notes-db ./db
+docker build -t notes-backend ./backend
+docker build -t notes-frontend ./frontend
+
+docker run -d --name db --network notes-net \
+  -e POSTGRES_DB=notes -e POSTGRES_USER=notes -e POSTGRES_PASSWORD=notes \
+  notes-db
+
+docker run -d --name backend --network notes-net \
+  -e DB_HOST=db -e DB_NAME=notes -e DB_USER=notes -e DB_PASSWORD=notes \
+  notes-backend
+
+docker run -d --name frontend --network notes-net -p 8080:80 notes-frontend
+```
+
+Проверка, что контейнеры в одной сети:
+
+```bash
+docker network inspect notes-net
+docker exec frontend wget -qO- http://backend:8000/api/health
+```
+
+## Frontend
+
+Сборка в Dockerfile в два этапа:
+
+1. `node:22-alpine`: `npm install` и `npm run build`, результат в `dist/`
+2. `nginx:1.27-alpine`: в образ попадают только `dist/` и конфиг nginx
+
+Локальный запуск (запросы `/api` проксируются на `localhost:8000`):
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
 ## API
 
@@ -84,9 +135,12 @@ notes-app/
 │   ├── requirements-dev.txt
 │   └── Dockerfile
 ├── frontend/
+│   ├── src/
+│   │   ├── main.js
+│   │   └── style.css
 │   ├── index.html
-│   ├── app.js
-│   ├── style.css
+│   ├── package.json
+│   ├── vite.config.js
 │   ├── nginx.conf.template
 │   └── Dockerfile
 ├── db/

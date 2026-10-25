@@ -1,9 +1,20 @@
+FROM node:22-alpine AS build
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm install
+
+COPY . .
+RUN npm run build
+
+
 FROM nginx:1.27-alpine
 
 ENV BACKEND_URL=http://backend:8000
 
 COPY --chmod=644 nginx.conf.template /etc/nginx/templates/default.conf.template
-COPY --chmod=644 index.html app.js style.css /usr/share/nginx/html/
+COPY --from=build /app/dist /usr/share/nginx/html
 
 EXPOSE 80
 
