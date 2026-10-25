@@ -1,5 +1,6 @@
 services:
   db:
+    image: ${REGISTRY:-localhost:5000}/notes-db:${APP_VERSION:-dev}
     build: ./db
     environment:
       POSTGRES_DB: ${DB_NAME:-notes}
@@ -17,6 +18,7 @@ services:
     restart: unless-stopped
 
   backend:
+    image: ${REGISTRY:-localhost:5000}/notes-backend:${APP_VERSION:-dev}
     build:
       context: ./backend
       args:
@@ -36,6 +38,7 @@ services:
     restart: unless-stopped
 
   frontend:
+    image: ${REGISTRY:-localhost:5000}/notes-frontend:${APP_VERSION:-dev}
     build: ./frontend
     environment:
       BACKEND_URL: http://backend:8000

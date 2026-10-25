@@ -124,6 +124,51 @@ pytest -v
 
 `test_ready` и `test_notes_crud` пропускаются, если PostgreSQL недоступен.
 
+## Docker Registry
+
+Запуск регистра на отдельной машине:
+
+```bash
+docker run -d \
+  --name registry \
+  --restart unless-stopped \
+  -p 5000:5000 \
+  -v registry-data:/var/lib/registry \
+  -e REGISTRY_STORAGE_DELETE_ENABLED=true \
+  registry:2
+```
+
+Сборка и публикация образов (адрес регистра и тег берутся из `.env`):
+
+```bash
+docker compose build
+docker compose push
+```
+
+Проверка содержимого регистра:
+
+```bash
+curl http://192.168.56.10:5000/v2/_catalog
+curl http://192.168.56.10:5000/v2/notes-backend/tags/list
+```
+
+Запуск на другой машине: нужны только файлы из `deploy/`.
+
+```bash
+cd deploy
+cp .env.example .env
+docker compose pull
+docker compose up -d
+```
+
+Регистр работает по HTTP, поэтому на каждой машине, которая к нему обращается, адрес регистра нужно добавить в `/etc/docker/daemon.json`:
+
+```json
+{
+  "insecure-registries": ["192.168.56.10:5000"]
+}
+```
+
 ## Структура
 
 ```
@@ -146,6 +191,9 @@ notes-app/
 ├── db/
 │   ├── init.sql
 │   └── Dockerfile
+├── deploy/
+│   ├── docker-compose.yml
+│   └── .env.example
 ├── docker-compose.yml
 └── .env.example
 ```
