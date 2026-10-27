@@ -126,16 +126,12 @@ pytest -v
 
 ## Docker Registry
 
-Запуск регистра на отдельной машине:
+Регистр запускается на отдельной машине из `registry/docker-compose.yml`. Проект на этой машине не нужен, достаточно одного файла:
 
 ```bash
-docker run -d \
-  --name registry \
-  --restart unless-stopped \
-  -p 5000:5000 \
-  -v registry-data:/var/lib/registry \
-  -e REGISTRY_STORAGE_DELETE_ENABLED=true \
-  registry:2
+mkdir registry && cd registry
+# скопировать docker-compose.yml
+docker compose up -d
 ```
 
 Сборка и публикация образов (адрес регистра и тег берутся из `.env`):
@@ -191,6 +187,8 @@ notes-app/
 ├── db/
 │   ├── init.sql
 │   └── Dockerfile
+├── registry/
+│   └── docker-compose.yml
 ├── deploy/
 │   ├── docker-compose.yml
 │   └── .env.example

@@ -1,0 +1,11 @@
+repo_url: git@github.com:Gleb-Matveev/Devops.git
+repo_branch: main
+
+user_home: "/home/{{ ansible_user }}"
+project_dir: "{{ user_home }}/notes-app"
+deploy_key: "{{ user_home }}/.ssh/notes_deploy"
+
+git_user_name: Gleb
+git_user_email: 2004galeb909@gmail.com
+
+registry_address: 192.168.56.10:5000

@@ -1,0 +1,116 @@
+- name: Prepare server for notes-app
+  hosts: servers
+  become: true
+
+  tasks:
+    - name: Install Docker packages
+      ansible.builtin.apt:
+        name:
+          - docker.io
+          - docker-compose-v2
+          - docker-buildx
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Configure Docker daemon
+      ansible.builtin.copy:
+        dest: /etc/docker/daemon.json
+        content: "{{ {'insecure-registries': [registry_address]} | to_nice_json }}\n"
+        mode: "0644"
+      notify: Restart docker
+
+    - name: Enable Docker service
+      ansible.builtin.service:
+        name: docker
+        state: started
+        enabled: true
+
+    - name: Add user to docker group
+      ansible.builtin.user:
+        name: "{{ ansible_user }}"
+        groups: docker
+        append: true
+
+    - name: Install git
+      ansible.builtin.apt:
+        name: git
+        state: present
+
+    - name: Create .ssh directory
+      ansible.builtin.file:
+        path: "{{ user_home }}/.ssh"
+        state: directory
+        mode: "0700"
+      become: false
+
+    - name: Generate deploy key
+      ansible.builtin.command:
+        cmd: ssh-keygen -t ed25519 -N "" -C "{{ inventory_hostname }}-deploy" -f {{ deploy_key }}
+        creates: "{{ deploy_key }}"
+      become: false
+      register: keygen
+
+    - name: Read public key
+      ansible.builtin.slurp:
+        src: "{{ deploy_key }}.pub"
+      become: false
+      register: pubkey
+
+    - name: Wait until key is added to GitHub
+      ansible.builtin.pause:
+        prompt: |
+          Добавьте ключ в GitHub (репозиторий → Settings → Deploy keys) и нажмите Enter:
+
+          {{ pubkey.content | b64decode }}
+      when: keygen.changed
+
+    - name: Get GitHub host key
+      ansible.builtin.command: ssh-keyscan -t ed25519 github.com
+      register: github_hostkey
+      changed_when: false
+
+    - name: Add GitHub to known_hosts
+      ansible.builtin.known_hosts:
+        name: github.com
+        key: "{{ github_hostkey.stdout }}"
+        path: "{{ user_home }}/.ssh/known_hosts"
+      become: false
+
+    - name: Use deploy key for GitHub
+      ansible.builtin.blockinfile:
+        path: "{{ user_home }}/.ssh/config"
+        create: true
+        mode: "0600"
+        block: |
+          Host github.com
+            IdentityFile {{ deploy_key }}
+            IdentitiesOnly yes
+      become: false
+
+    - name: Set git user name
+      community.general.git_config:
+        name: user.name
+        value: "{{ git_user_name }}"
+        scope: global
+      become: false
+
+    - name: Set git user email
+      community.general.git_config:
+        name: user.email
+        value: "{{ git_user_email }}"
+        scope: global
+      become: false
+
+    - name: Clone project
+      ansible.builtin.git:
+        repo: "{{ repo_url }}"
+        dest: "{{ project_dir }}"
+        version: "{{ repo_branch }}"
+      become: false
+
+  handlers:
+    - name: Restart docker
+      ansible.builtin.service:
+        name: docker
+        state: restarted
