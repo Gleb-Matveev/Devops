@@ -41,7 +41,8 @@ services:
     networks:
       - app-net
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     restart: unless-stopped
 
 networks:
